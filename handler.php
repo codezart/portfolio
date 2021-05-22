@@ -8,8 +8,8 @@ require 'php/PHPMailer-5.2.28/src/PHPMailer.php';
 require 'php/PHPMailer-5.2.28/src/SMTP.php';
 
 $mail = new PHPMailer(true);
-$mail_subject = 'Subject';
-$mail_to_email = '***@gmail.com'; // your email
+$mail_subject = 'Personal Website - contact request';
+$mail_to_email = 'abdurrahman.mohammed@outlook.com'; // your email
 $mail_to_name = 'Webmaster';
 
 try {
