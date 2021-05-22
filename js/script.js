@@ -1,6 +1,6 @@
 /*----------------------------------------------------------------
 
-	Template Name: Hayley - Creative Personal Onepage HTML Template
+	Template Name: Abdur Rahman - Creative Personal Onepage HTML Template
 
 	-------------------------------------------------------------------------------*/
 

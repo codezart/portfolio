@@ -1,9 +1,9 @@
 /* ------------------------------------------------------------------------------
 
-  Template Name: Hayley
+  Template Name: Abdur Rahman
 
 
-  Description: Hayley - Creative Personal Onepage HTML Template
+  Description: Abdur Rahman - Creative Personal Onepage HTML Template
   Author: Paul
   Author URI: http://themeforest.net/user/paul_tf
 
@@ -726,6 +726,7 @@ label.error {
 
 .nav-toggle .stick + .stick {
 	margin-top: 9px;
+	width: 80%;
 }
 
 .body-menu-opened .nav-toggle .stick-1 {
@@ -738,6 +739,7 @@ label.error {
 
 .body-menu-opened .nav-toggle .stick-2 {
 	animation: ease .5s bottom forwards;
+	width:100%;
 }
 
 .nav-toggle .stick-2 {
