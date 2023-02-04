@@ -107,7 +107,7 @@
 			animateIn: 'fadeIn',
 			animateOut: 'fadeOut',
 			items: 1,
-			navText: ['<i class="lni lni-chevron-left"></i>','<i class="lni lni-chevron-right"></i>'],
+			navText: ['<i class="lni lni-chevron-left" style="color:black"></i>','<i class="lni lni-chevron-right" style="color:black"></i>'],
 			smartSpeed: 750,
 			dots: false,
 			nav: true,
