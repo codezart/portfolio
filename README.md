@@ -1,34 +1,39 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Portfolio-vite-tailwind-reactjs
 
-## Getting Started
+Technologies used:
 
-First, run the development server:
+- HTML
+- CSS
+- JS
+- React JS
+- React-type animations
+- Getform.io
 
-```bash
-npm run dev
-# or
-yarn dev
-```
+## Acknowledgements
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- To run:
+- npm run dev
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+## Authors
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+- [ CodeCommerce - link here ](https://www.youtube.com/watch?v=22CxRxryQFE)
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+## Demo
 
-## Learn More
+- [Online app (Netlify) - click here](https://rad-bublanina-e106a5.netlify.app/)
 
-To learn more about Next.js, take a look at the following resources:
+## Web App
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+![image](https://user-images.githubusercontent.com/63982700/215305766-55d273e2-4b16-4e58-b5f9-a19b3c3baec9.png)
+![image](https://user-images.githubusercontent.com/63982700/215305781-aaac37c7-d8fb-4ef7-864b-cf8f3f6eef46.png)
+![image](https://user-images.githubusercontent.com/63982700/215305793-e48fdc9c-339d-437f-838f-2ccb69b5b1f9.png)
+![image](https://user-images.githubusercontent.com/63982700/215305804-295a14b8-c03d-46da-801a-0148ff825c8f.png)
+![image](https://user-images.githubusercontent.com/63982700/215305819-a43450a6-eca4-471c-948b-1454525782a3.png)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Mobile
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+![image](https://user-images.githubusercontent.com/63982700/215305868-e09fd707-88dd-4649-b156-1fa28a609b6b.png)
+![image](https://user-images.githubusercontent.com/63982700/215305874-f59f31aa-6a1c-4a4b-a11c-c68773f3445c.png)
+![image](https://user-images.githubusercontent.com/63982700/215305885-f120e335-7260-4bad-829b-e473985b5189.png)
+![image](https://user-images.githubusercontent.com/63982700/215305925-ff81bc50-eb3d-4067-b00c-cf1963eccc52.png)
+![image](https://user-images.githubusercontent.com/63982700/215305935-fa7993b7-ebec-49d5-a755-2ee34cfac2c1.png)
