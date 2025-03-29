@@ -8,7 +8,7 @@ export default function Footer() {
 	<footer className="mt-20">
 		<div className="w-max text-center justify-center mx-auto">
 			<Image
-				src={assets.kinaxis_logo}
+				src={assets.abdurrahman_logo}
 				alt="Footer Image"
 				className="w-36 mx-auto mb-2"
 			/>
