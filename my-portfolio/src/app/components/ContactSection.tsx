@@ -9,7 +9,7 @@ export default function ContactSection() {
 			<h4 className="text-center mb-2 text-lg">
 			Connect with me</h4>
 			<h2 className="text-center text-3xl md:text-5xl">
-			Get in Touch</h2>
+			Let's Get in Touch</h2>
 			<p className="text-center max-w-2xl mx-auto mt-5 mb-12">
 				I would love to hear from you! Whether you have a question, want to
 				discuss a project, or just want to connect, feel free to reach out.

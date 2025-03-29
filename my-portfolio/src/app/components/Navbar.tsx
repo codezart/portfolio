@@ -1,5 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { assets } from "@/assets/assets";
+import Image from "next/image";
+import { useState, useEffect, use } from "react";
 import { IoMoonOutline } from "react-icons/io5";
 import { RiMenu3Fill } from "react-icons/ri";
 import { IoMdClose } from "react-icons/io";
@@ -7,6 +9,7 @@ import { IoMdClose } from "react-icons/io";
 export default function Navbar() {
   const [activeSection, setActiveSection] = useState("home");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isScroll, setIsScroll] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,18 +22,36 @@ export default function Navbar() {
           setActiveSection(section);
         }
       }
+      
+      if (window.scrollY > 900) {
+        console.log(scrollY);
+        setIsScroll(true);
+      } else {
+        setIsScroll(false);
+      }
+
     };
+
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  return (
-    <nav className="w-full flex justify-between items-center px-5 lg:px-8 xl:px-[8%] py-4 fixed top-0 z-50">
-      <div></div>
 
+  return (
+    <nav className={`w-full flex justify-between items-center px-5 lg:px-8 xl:px-[8%] py-4 fixed top-0 z-50
+      ${isScroll ? "bg-white bg-opacity-50 backdrop-blur-lg shadow-sm" : ""}`}>
+      <div className=" fixed top-0 left-0 ">
+        <Image
+          src={assets.abdurrahman_logo}
+          alt=""
+          className="w-64 h-24"
+          />
+      </div>
+      <div> </div>
       {/* Desktop Nav */}
-      <ul className="navbar-list hidden md:flex items-center gap-6 lg:gap-8 rounded-full px-12 py-3 bg-white shadow-xs bg-opacity-20">
+      <ul className={`navbar-list hidden md:flex items-center gap-6 lg:gap-8 rounded-full px-12 py-3 
+        ${isScroll ? "" : "bg-white shadow-xs bg-opacity-20"} `}>
         {["home", "about", "experience", "projects", "contact"].map((section) => (
           <li key={section}>
             <a

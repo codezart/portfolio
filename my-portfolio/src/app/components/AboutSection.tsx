@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { assets } from "@/assets/assets";
 import { motion } from "framer-motion";
+import { HighlightsData } from "@/data/aboutMe";
+
 export default function AboutSection() {
 	return (
 	  <section id="about" className="w-full px-[12%] py-10 scroll-mt-20">
@@ -46,6 +48,15 @@ export default function AboutSection() {
 						always eager to connect with like-minded individuals and learn from
 						their experiences.
 					</p>
+					<ul className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl">
+						{HighlightsData.map((item, index) => (
+						<li key={index} className="border-[0.5px] border-gray-400 rounded-xl p-6 cursor-pointer">
+							{item.icon}
+							<h3 className="my-4 font-semibold text-gray-700">{item.title}:</h3> 
+							<p>{item.description}</p>
+						</li>
+						))}
+					</ul>
 				</div>
 			</div>
 		</motion.div>
