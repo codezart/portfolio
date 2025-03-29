@@ -1,12 +1,15 @@
-import HomeSection from "@/components/sections/HomeSection";
-import AboutSection from "@/components/sections/AboutSection";
-import ExperienceSection from "@/components/sections/ExperienceSection";
-import ProjectsSection from "@/components/sections/ProjectsSection";
-import ContactSection from "@/components/sections/ContactSection";
+"use client";
+import Navbar from "@/app/components/Navbar";
+import HomeSection from "@/app/components/HomeSection";
+import AboutSection from "@/app/components/AboutSection";
+import ExperienceSection from "@/app/components/ExperienceSection";
+import ProjectsSection from "@/app/components/ProjectsSection";
+import ContactSection from "@/app/components/ContactSection";
 
 export default function Home() {
   return (
-    <main className="flex flex-col items-center justify-center pt-16">
+    <main className="">
+      <Navbar />
       <HomeSection />
       <AboutSection />
       <ExperienceSection />

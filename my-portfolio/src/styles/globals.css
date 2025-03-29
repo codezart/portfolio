@@ -1,3 +1,4 @@
+@import "tailwindcss";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,3 +7,7 @@ html {
 	scroll-behavior: smooth;
   }
   
+
+.navbar-list {
+	list-style-type: none;
+}
