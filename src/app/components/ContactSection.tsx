@@ -2,6 +2,33 @@ import React from 'react';
 import { GoArrowRight } from "react-icons/go";
 
 export default function ContactSection() {
+
+	const [result, setResult] = React.useState("");
+
+	const onSubmit = async (event) => {
+		event.preventDefault();
+		setResult("Sending....");
+	  
+		const formData = new FormData(event.target);
+		const jsonData = Object.fromEntries(formData.entries());
+	  
+		const response = await fetch("/api/submit-form", {
+		  method: "POST",
+		  headers: { "Content-Type": "application/json" },
+		  body: JSON.stringify(jsonData),
+		});
+	  
+		const data = await response.json();
+	  
+		if (data.success) {
+		  setResult("Form Submitted Successfully");
+		  event.target.reset();
+		} else {
+		  console.log("Error", data);
+		  setResult(data.message || "Submission failed");
+		}
+	  };
+		  
 	return (
 		<section id="contact" className="w-full px-[12%] py-10 scroll-mt-20
 			bg-[url('/assets/images/contact-bg.png')] bg-no-repeat bg-center bg-[length:90%_auto]"> 
@@ -15,18 +42,20 @@ export default function ContactSection() {
 				discuss a project, or just want to connect, feel free to reach out.
 			</p>
 
-			<form className="max-w-2xl mx-auto">
+			<form className="max-w-2xl mx-auto" onSubmit={onSubmit}>
 				<div className='grid grid-cols-1 sm:grid-cols-2 gap-6 mt-10 mb-8'>
 					<input
 						type="text"
 						placeholder="Your Name"
 						className="flex-1 p-3 outline-none border-[0.5px] border-gray-400 rounded-md bg-white"
+						name='name'
 						required
 					/>
 					<input
 						type="email"
 						placeholder="Your Email"
 						className="flex-1 p-3 outline-none border-[0.5px] border-gray-400 rounded-md bg-white"
+						name='email'
 						required
 					/>
 				</div>
@@ -34,6 +63,8 @@ export default function ContactSection() {
 				placeholder="Your Message"
 				className="w-full p-4 outline-none border-[0.5px] border-gray-400 rounded-md bg-white mb-6"
 				rows={6}
+				name='message'
+				required
 				></textarea>
 				<button
 					type="submit"
@@ -43,6 +74,9 @@ export default function ContactSection() {
 				Send Message <GoArrowRight className='w-4'/>
 				</button>
 			</form>
+			<p className="text-center mt-5 text-lg">
+				{result}
+			</p>
 	  </section>
 	);
   }

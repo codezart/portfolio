@@ -14,8 +14,8 @@ export default function Home() {
       <Navbar />
       <HomeSection />
       <AboutSection />
-      <ExperienceSection />
-      <ProjectsSection />
+      {/* <ExperienceSection /> */}
+      {/* <ProjectsSection /> */}
       <ContactSection />
       <Footer />
     </main>

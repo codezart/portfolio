@@ -92,6 +92,7 @@ export default function HomeSection() {
       {/* Optional background shapes */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse"></div>
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-rose-300 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse delay-200"></div>
+
     </section>
   );
 }
