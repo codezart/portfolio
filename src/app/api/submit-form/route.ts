@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   const formData = await req.json();
-  formData.access_key = process.env.WEB3FORMS_ACCESS_KEY;
+  formData.access_key = "d5c2517e-e6fd-4d4d-ad80-7be420ec7564";
 
   try {
     const response = await fetch("https://api.web3forms.com/submit", {

@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d out"
+    "deploy": "gh-pages -d out -r https://github.com/codezart/portfolio.git -b gh-pages"
   },
   "dependencies": {
     "framer-motion": "^12.6.2",
