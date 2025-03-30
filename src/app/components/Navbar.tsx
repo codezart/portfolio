@@ -1,7 +1,7 @@
 "use client";
 import { assets } from "@/assets/assets";
 import Image from "next/image";
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { IoMoonOutline } from "react-icons/io5";
 import { RiMenu3Fill } from "react-icons/ri";
 import { IoMdClose } from "react-icons/io";
@@ -16,7 +16,7 @@ export default function Navbar() {
       const sections = ["home", "about", "experience", "projects", "contact"];
       const scrollPosition = window.scrollY + 200;
 
-      for (let section of sections) {
+      for (const section of sections) {
         const element = document.getElementById(section);
         if (element && element.offsetTop <= scrollPosition) {
           setActiveSection(section);

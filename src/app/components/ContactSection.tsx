@@ -5,11 +5,11 @@ export default function ContactSection() {
 
 	const [result, setResult] = React.useState("");
 
-	const onSubmit = async (event) => {
+	const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setResult("Sending....");
 	  
-		const formData = new FormData(event.target);
+		const formData = new FormData(event.target as HTMLFormElement);
 		const jsonData = Object.fromEntries(formData.entries());
 	  
 		const response = await fetch("/api/submit-form", {
@@ -22,7 +22,7 @@ export default function ContactSection() {
 	  
 		if (data.success) {
 		  setResult("Form Submitted Successfully");
-		  event.target.reset();
+		  (event.target as HTMLFormElement).reset();
 		} else {
 		  console.log("Error", data);
 		  setResult(data.message || "Submission failed");
@@ -36,7 +36,7 @@ export default function ContactSection() {
 			<h4 className="text-center mb-2 text-lg">
 			Connect with me</h4>
 			<h2 className="text-center text-3xl md:text-5xl">
-			Let's Get in Touch</h2>
+			Let&apos;s Get in Touch</h2>
 			<p className="text-center max-w-2xl mx-auto mt-5 mb-12">
 				I would love to hear from you! Whether you have a question, want to
 				discuss a project, or just want to connect, feel free to reach out.
