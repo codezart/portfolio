@@ -9,12 +9,12 @@
 const isProd = process.env.NODE_ENV === 'production';
 const nextConfig = {
   reactStrictMode: true,
+  output: 'export',
+  trailingSlash: true,
   images: {
-    unoptimized: true, // Disable default image optimization
-  },
-  assetPrefix: isProd ? '/portfolio/' : '',
-  basePath: isProd ? '/portfolio' : '',
-  output: 'export'
+    unoptimized: true
+  }
+  // ❌ REMOVE assetPrefix and basePath
 };
 
 export default nextConfig;
