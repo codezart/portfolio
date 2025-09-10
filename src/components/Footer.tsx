@@ -16,12 +16,12 @@ const Footer = () => {
     },
     {
       icon: <Github className="w-5 h-5" />,
-      href: "https://github.com/abdurrahman-mohammed",
+      href: "https://github.com/codezart",
       label: "GitHub"
     },
     {
       icon: <Mail className="w-5 h-5" />,
-      href: "mailto:abdurrahman.mohammed@example.com",
+      href: "mailto:abdurrahman.mohammed@outlook.com",
       label: "Email"
     }
   ];

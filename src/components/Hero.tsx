@@ -58,15 +58,16 @@ const Hero = () => {
               <Mail className="w-5 h-5" />
               Hire Me
             </Button>
-            
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="min-w-[200px]"
-            >
-              <Download className="w-5 h-5" />
-              Download Resume
-            </Button>
+            <a href="https://docs.google.com/document/d/1rsv1eC7PfG31425o9S2V55tPvGldl4U6kmUU9ldwg0M/export?format=pdf" target="_blank" rel="noopener noreferrer">
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="min-w-[200px]"
+              >
+                <Download className="w-5 h-5" />
+                Download Resume
+              </Button>
+            </a>
           </div>
 
           {/* Social Links */}
@@ -80,7 +81,7 @@ const Hero = () => {
               <Linkedin className="w-6 h-6" />
             </a>
             <a 
-              href="https://github.com/abdurrahman-mohammed" 
+              href="https://github.com/codezart" 
               target="_blank" 
               rel="noopener noreferrer"
               className="p-3 rounded-full bg-foreground text-background hover:bg-foreground/90 transition-smooth shadow-card"
