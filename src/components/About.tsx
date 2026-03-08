@@ -6,7 +6,7 @@ const About = () => {
   const highlights = [
     {
       icon: <Code className="w-6 h-6" />,
-      title: "3+ Years Experience",
+      title: "5+ Years Experience",
       description: "Building scalable ML systems and real-time pipelines"
     },
     {
@@ -63,7 +63,7 @@ const About = () => {
                 time series forecasting, and generative AI applications.
               </p>
               <p>
-                Over the past 3+ years, I've honed my skills across diverse roles, from developing scalable microservices 
+                Over the past 5+ years, I've honed my skills across diverse roles, from developing scalable microservices 
                 to optimizing ML pipelines that handle massive datasets. I'm passionate about delivering high-quality 
                 solutions that meet and exceed expectations.
               </p>

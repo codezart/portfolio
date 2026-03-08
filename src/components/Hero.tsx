@@ -43,7 +43,7 @@ const Hero = () => {
 
           {/* Summary */}
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-            Engineer with 3+ years of experience building scalable forecasting systems and real-time ML pipelines. 
+            Engineer with 5+ years of experience building scalable forecasting systems and real-time ML pipelines. 
             Specialized in time series modeling, predictive analytics, and end-to-end MLOps workflows.
           </p>
 
@@ -58,14 +58,14 @@ const Hero = () => {
               <Mail className="w-5 h-5" />
               Hire Me
             </Button>
-            <a href="https://docs.google.com/document/d/1rsv1eC7PfG31425o9S2V55tPvGldl4U6kmUU9ldwg0M/export?format=pdf" target="_blank" rel="noopener noreferrer">
+            <a href="https://drive.google.com/file/d/1Mtg-QjxOoaKKPUKtId3Aa6nRW1-GqCB9/view?usp=sharing" target="_blank" rel="noopener noreferrer">
               <Button 
                 variant="outline" 
                 size="lg"
                 className="min-w-[200px]"
               >
                 <Download className="w-5 h-5" />
-                Download Resume
+                View Resume
               </Button>
             </a>
           </div>
