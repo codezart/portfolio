@@ -49,15 +49,16 @@ const Hero = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <Button 
-              variant="hero" 
-              size="lg"
-              onClick={scrollToContact}
-              className="min-w-[200px]"
-            >
-              <Mail className="w-5 h-5" />
-              Hire Me
-            </Button>
+            <a href="https://calendly.com/hae-frndz-rahman/30min" target="_blank" rel="noopener noreferrer">
+              <Button
+                variant="hero"
+                size="lg"
+                className="min-w-[200px]"
+              >
+                <Mail className="w-5 h-5" />
+                Hire Me
+              </Button>
+            </a>
             <a href="https://drive.google.com/file/d/1Mtg-QjxOoaKKPUKtId3Aa6nRW1-GqCB9/view?usp=sharing" target="_blank" rel="noopener noreferrer">
               <Button 
                 variant="outline" 

@@ -47,13 +47,11 @@ const Header = () => {
             </button>
           </div>
 
-          <Button 
-            variant="professional" 
-            onClick={() => scrollToSection('contact')}
-            className="hidden md:inline-flex"
-          >
-            Let's Connect
-          </Button>
+          <a href="https://calendly.com/hae-frndz-rahman/30min" target="_blank" rel="noopener noreferrer" className="hidden md:inline-flex">
+            <Button variant="professional">
+              Let's Connect
+            </Button>
+          </a>
         </div>
       </nav>
     </header>
