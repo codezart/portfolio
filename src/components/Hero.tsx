@@ -1,19 +1,26 @@
 import { Button } from "@/components/ui/button";
 import { Mail, Download, Github, Linkedin } from "lucide-react";
+import { useTheme } from "next-themes";
 import profilePhoto from "@/assets/profile-photo.jpg";
 import heroBackground from "@/assets/hero-background.jpg";
 
 const Hero = () => {
+  const { resolvedTheme } = useTheme();
+
   const scrollToContact = () => {
     const element = document.getElementById('contact');
     element?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const overlay = resolvedTheme === 'dark'
+    ? 'linear-gradient(rgba(18, 22, 30, 0.92), rgba(18, 22, 30, 0.88))'
+    : 'linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.8))';
+
   return (
-    <section 
+    <section
       className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{ 
-        backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.8)), url(${heroBackground})`,
+      style={{
+        backgroundImage: `${overlay}, url(${heroBackground})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center'
       }}
