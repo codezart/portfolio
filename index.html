@@ -19,7 +19,17 @@
   <meta name="author" content="Abdur Rahman Mohammed" />
   <meta name="keywords"
     content="AI Engineer, ML Engineer, Software Developer, Python, Machine Learning, Time Series, MLOps, AWS, Azure" />
-  <meta name="theme-color" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#161b25" />
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches))
+          document.documentElement.classList.add('dark');
+      } catch(e) {}
+    })();
+  </script>
   <link rel="canonical" href="https://codezart.com" />
 
 

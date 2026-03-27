@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Header = () => {
   const location = useLocation();
@@ -60,11 +61,14 @@ const Header = () => {
             </Link>
           </div>
 
-          <a href="https://calendly.com/hae-frndz-rahman/30min" target="_blank" rel="noopener noreferrer" className="hidden md:inline-flex">
-            <Button variant="professional">
-              Let's Connect
-            </Button>
-          </a>
+          <div className="hidden md:flex items-center gap-2">
+            <ThemeToggle />
+            <a href="https://calendly.com/hae-frndz-rahman/30min" target="_blank" rel="noopener noreferrer">
+              <Button variant="professional">
+                Let's Connect
+              </Button>
+            </a>
+          </div>
         </div>
       </nav>
     </header>
