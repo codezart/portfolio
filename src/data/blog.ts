@@ -183,6 +183,608 @@ Answer:"""
       },
     ],
   },
+  {
+    slug: 'scaling-rag-foundations',
+    title: 'Scaling RAG Part 1: Foundations — When Naive RAG Breaks',
+    date: '2026-03-22',
+    readTime: '9 min read',
+    category: 'Generative AI',
+    tags: ['RAG', 'Scalability', 'Vector Databases', 'Embeddings', 'MLOps'],
+    excerpt:
+      'Naive RAG works great in a notebook. Then you hit 10 million documents and everything falls apart. Here\'s a systematic look at why — and the foundational patterns that fix it.',
+    content: [
+      {
+        type: 'paragraph',
+        text: 'Most RAG tutorials show you a pipeline that works beautifully on a few hundred documents. You embed them, store them in a vector DB, retrieve the top-5, and get great answers. Then you take that same pipeline to production with millions of documents and a few hundred concurrent users, and it falls apart in three different ways at once.',
+      },
+      {
+        type: 'paragraph',
+        text: 'This post covers the first four scaling concerns: diagnosing where naive RAG breaks, fixing the ingestion pipeline, optimizing embeddings, and architecting your vector store for scale.',
+      },
+      { type: 'heading', level: 2, text: '1. Why Naive RAG Breaks at Scale' },
+      {
+        type: 'paragraph',
+        text: 'The failure modes are predictable once you know what to look for. They fall into three categories: latency, cost, and quality degradation.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Latency: Embedding every query synchronously + ANN search over millions of vectors + LLM generation adds up fast. P99 latency balloons under load.',
+          'Cost: Calling a hosted embedding API for every document re-index and every query gets expensive quickly. At 1M documents, re-indexing from scratch can cost hundreds of dollars.',
+          'Quality degradation: With more documents, retrieval precision drops. The top-5 chunks are now competing against far more noise, and the LLM gets handed irrelevant context.',
+        ],
+      },
+      {
+        type: 'callout',
+        text: 'The hard truth: retrieval quality often gets worse as your corpus grows, unless you actively invest in better chunking, filtering, and reranking.',
+      },
+      {
+        type: 'paragraph',
+        text: 'The fix is not a single change — it\'s a set of architectural upgrades applied at each stage of the pipeline. Let\'s go through them.',
+      },
+      { type: 'heading', level: 2, text: '2. Chunking at Scale — Async Ingestion Pipelines' },
+      {
+        type: 'paragraph',
+        text: 'In a naive setup, indexing is synchronous: a document comes in, you chunk it, embed it, and write it to the vector store — all in one blocking call. This breaks down when you need to index thousands of documents per hour.',
+      },
+      {
+        type: 'paragraph',
+        text: 'The solution is an async ingestion pipeline. Documents get enqueued, workers process them in parallel, and the vector store gets populated in the background.',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `# Async ingestion with a task queue (e.g. Celery + Redis)
+from celery import Celery
+from typing import List
+
+app = Celery("ingestion", broker="redis://localhost:6379/0")
+
+@app.task(bind=True, max_retries=3)
+def index_document(self, doc_id: str, text: str):
+    try:
+        chunks = chunk_text(text, chunk_size=512, overlap=50)
+        # Deduplicate: skip chunks already indexed
+        new_chunks = [c for c in chunks if not vector_store.exists(hash(c))]
+        if not new_chunks:
+            return {"doc_id": doc_id, "status": "skipped (duplicate)"}
+        embeddings = embed_batch(new_chunks)  # batch call, not one-by-one
+        vector_store.upsert_batch(new_chunks, embeddings, metadata={"doc_id": doc_id})
+        return {"doc_id": doc_id, "chunks_indexed": len(new_chunks)}
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=2 ** self.request.retries)`,
+      },
+      {
+        type: 'paragraph',
+        text: 'Two practices that matter here: batching embedding calls (send 100 chunks in one API request instead of 100 separate requests — most providers support this and it\'s dramatically faster), and deduplication via content hashing to avoid re-indexing identical documents.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Use a content hash (e.g. SHA-256 of chunk text) as the vector ID — natural deduplication',
+          'Track document versions so you only re-embed changed chunks, not the whole document',
+          'Use upsert (not insert) so re-indexing is idempotent',
+          'Build a dead-letter queue for failed documents so nothing silently disappears',
+        ],
+      },
+      { type: 'heading', level: 2, text: '3. Embedding Optimization' },
+      {
+        type: 'paragraph',
+        text: 'Embeddings are often the biggest cost and latency driver in a scaled RAG system. There are three levers to pull.',
+      },
+      { type: 'heading', level: 3, text: 'Batch Everything' },
+      {
+        type: 'paragraph',
+        text: 'Never embed one chunk at a time. Most embedding APIs (OpenAI, Cohere, etc.) accept arrays of inputs and process them far more efficiently than individual calls.',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `def embed_batch(texts: List[str], batch_size: int = 100) -> List[List[float]]:
+    all_embeddings = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        response = client.embeddings.create(
+            input=batch,
+            model="text-embedding-3-small"
+        )
+        all_embeddings.extend([r.embedding for r in response.data])
+    return all_embeddings`,
+      },
+      { type: 'heading', level: 3, text: 'Cache Query Embeddings' },
+      {
+        type: 'paragraph',
+        text: 'Users tend to ask similar questions. Caching the embedding of a query (keyed on the query string) avoids redundant embedding API calls for repeated or near-identical queries.',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `import hashlib, json
+import redis
+
+cache = redis.Redis()
+
+def embed_query_cached(query: str) -> List[float]:
+    key = "emb:" + hashlib.sha256(query.encode()).hexdigest()
+    cached = cache.get(key)
+    if cached:
+        return json.loads(cached)
+    embedding = embed_text(query)
+    cache.setex(key, 3600, json.dumps(embedding))  # TTL: 1 hour
+    return embedding`,
+      },
+      { type: 'heading', level: 3, text: 'Right-Size Your Embedding Model' },
+      {
+        type: 'paragraph',
+        text: 'Bigger embedding models are not always better for your use case. text-embedding-3-small is 5x cheaper than text-embedding-3-large and within a few percentage points on most retrieval benchmarks. For domain-specific corpora, fine-tuning a smaller open-source model (like BGE-small or E5-small) can outperform a larger general-purpose model.',
+      },
+      { type: 'heading', level: 2, text: '4. Vector DB Architecture for Scale' },
+      {
+        type: 'paragraph',
+        text: 'Not all vector stores are created equal when it comes to scale. Here are the architectural decisions that matter most.',
+      },
+      { type: 'heading', level: 3, text: 'Namespaces and Tenants' },
+      {
+        type: 'paragraph',
+        text: 'If you\'re building a multi-tenant application (e.g. each customer has their own document corpus), you need logical isolation between tenants. Most production-grade vector DBs support this natively.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Pinecone: namespaces within an index — fast, no cross-namespace queries',
+          'Weaviate: multi-tenancy mode with per-tenant data isolation',
+          'Qdrant: collections per tenant, or payload filtering with tenant_id field',
+          'Never mix tenants in the same namespace — you\'ll bleed context across customers',
+        ],
+      },
+      { type: 'heading', level: 3, text: 'Metadata Filtering' },
+      {
+        type: 'paragraph',
+        text: 'At scale you rarely want to search your entire corpus. Use metadata filters to pre-scope the search space — by date, source, department, language, etc. This improves both retrieval precision and query latency.',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `# Filter by metadata BEFORE similarity search — not after
+results = vector_store.query(
+    vector=query_embedding,
+    top_k=10,
+    filter={
+        "source": {"$in": ["internal_docs", "confluence"]},
+        "language": {"$eq": "en"},
+        "updated_at": {"$gte": "2025-01-01"},
+    }
+)`,
+      },
+      { type: 'heading', level: 3, text: 'Index Tuning' },
+      {
+        type: 'paragraph',
+        text: 'ANN indices have tunable parameters that trade off speed vs. recall. For production, benchmark your specific data to find the right operating point — don\'t just use defaults.',
+      },
+      {
+        type: 'list',
+        items: [
+          'HNSW (used by Qdrant, Weaviate): tune ef_construction and m parameters — higher values = better recall, slower indexing',
+          'IVF (FAISS): tune nlist (number of clusters) and nprobe (clusters searched at query time)',
+          'Aim for >95% recall@10 — measure with a held-out ground truth set',
+          'Re-benchmark after your corpus grows significantly (10x document count often shifts the optimal parameters)',
+        ],
+      },
+      {
+        type: 'callout',
+        text: 'Scaling RAG is mostly an engineering problem, not a model problem. Getting the ingestion, caching, and index architecture right will take you further than swapping in a fancier LLM.',
+      },
+      { type: 'heading', level: 2, text: 'What\'s Next' },
+      {
+        type: 'paragraph',
+        text: 'In Part 2, we\'ll cover the retrieval-side improvements: hybrid search (dense + sparse), cross-encoder reranking, and semantic caching — the techniques that directly improve answer quality at scale.',
+      },
+    ],
+  },
+  {
+    slug: 'scaling-rag-retrieval',
+    title: 'Scaling RAG Part 2: Smarter Retrieval — Hybrid Search, Reranking & Caching',
+    date: '2026-03-23',
+    readTime: '8 min read',
+    category: 'Generative AI',
+    tags: ['RAG', 'Hybrid Search', 'Reranking', 'Semantic Cache', 'BM25'],
+    excerpt:
+      'Semantic search alone leaves a lot on the table. Combining dense and sparse retrieval, adding a cross-encoder reranker, and caching frequent answers can dramatically improve both quality and throughput.',
+    content: [
+      {
+        type: 'paragraph',
+        text: 'Part 1 covered the infrastructure foundations: async ingestion, embedding optimization, and vector DB architecture. With those in place, the bottleneck shifts to retrieval quality. This post is about making the retrieval step itself smarter.',
+      },
+      { type: 'heading', level: 2, text: '5. Hybrid Search — Dense + Sparse Retrieval' },
+      {
+        type: 'paragraph',
+        text: 'Pure semantic (dense) search is powerful but has a blind spot: it can miss exact keyword matches. If a user asks about "GDPR Article 17", a semantic search might return tangentially related privacy documents instead of the one that literally contains "Article 17". This is where sparse retrieval (BM25/keyword search) complements dense retrieval.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Dense retrieval (embeddings): good at semantic similarity, paraphrase matching, concept-level relevance',
+          'Sparse retrieval (BM25/TF-IDF): good at exact keyword matching, product codes, names, IDs',
+          'Hybrid: union of both result sets, fused into a single ranked list',
+        ],
+      },
+      { type: 'heading', level: 3, text: 'Reciprocal Rank Fusion (RRF)' },
+      {
+        type: 'paragraph',
+        text: 'The standard way to merge two ranked lists is Reciprocal Rank Fusion. It\'s simple, parameter-light, and works well in practice:',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `from collections import defaultdict
+
+def reciprocal_rank_fusion(
+    dense_results: List[str],
+    sparse_results: List[str],
+    k: int = 60,
+) -> List[str]:
+    scores: dict[str, float] = defaultdict(float)
+
+    for rank, doc_id in enumerate(dense_results, start=1):
+        scores[doc_id] += 1.0 / (k + rank)
+
+    for rank, doc_id in enumerate(sparse_results, start=1):
+        scores[doc_id] += 1.0 / (k + rank)
+
+    return sorted(scores, key=scores.__getitem__, reverse=True)
+
+
+def hybrid_retrieve(query: str, vector_store, bm25_index, top_k: int = 10) -> List[str]:
+    dense_ids = retrieve_dense(query, vector_store, k=top_k)
+    sparse_ids = retrieve_sparse(query, bm25_index, k=top_k)
+    fused_ids = reciprocal_rank_fusion(dense_ids, sparse_ids)
+    return fused_ids[:top_k]`,
+      },
+      {
+        type: 'paragraph',
+        text: 'Many hosted vector DBs now support hybrid search natively (Weaviate\'s hybrid search, Elasticsearch\'s kNN + BM25, Azure AI Search\'s semantic hybrid mode). Using native support avoids the overhead of calling two separate systems.',
+      },
+      {
+        type: 'callout',
+        text: 'In benchmarks on domain-specific corpora, hybrid search consistently outperforms pure dense retrieval by 5–15% on NDCG@10. The gains are especially large for queries containing proper nouns, IDs, or technical terms.',
+      },
+      { type: 'heading', level: 2, text: '6. Reranking as a Quality Gate' },
+      {
+        type: 'paragraph',
+        text: 'Retrieval gives you a candidate set of chunks. Reranking re-scores that candidate set with a more expensive but more accurate model before passing it to the LLM. Think of retrieval as a fast, approximate filter and reranking as a slow, precise scorer.',
+      },
+      {
+        type: 'paragraph',
+        text: 'The key difference: embedding-based retrieval encodes query and document independently. A cross-encoder reranker sees the query and document together — it can model the interaction between them, which is far more expressive.',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `import cohere
+
+co = cohere.Client("your-api-key")
+
+def rerank(query: str, candidate_chunks: List[str], top_n: int = 5) -> List[str]:
+    response = co.rerank(
+        model="rerank-english-v3.0",
+        query=query,
+        documents=candidate_chunks,
+        top_n=top_n,
+    )
+    # Return chunks sorted by reranker relevance score
+    return [candidate_chunks[r.index] for r in response.results]
+
+
+def retrieve_and_rerank(query: str, vector_store, top_k: int = 5) -> List[str]:
+    # Retrieve a larger candidate set first
+    candidates = hybrid_retrieve(query, vector_store, top_k=20)
+    # Then rerank down to what the LLM will actually see
+    return rerank(query, candidates, top_n=top_k)`,
+      },
+      {
+        type: 'paragraph',
+        text: 'The pattern is always: retrieve more candidates than you need (e.g. top-20), then rerank down to the final set (e.g. top-5) that goes into the LLM prompt. The retrieval step is cheap enough to cast a wide net; the reranker is accurate enough to trim the noise.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Cohere Rerank: hosted API, low-latency, easy to integrate',
+          'BGE Reranker (open source): run locally or on your own infra, no API cost',
+          'ColBERT: token-level late interaction model — excellent quality, more compute',
+          'Typical latency add: 50–150ms for a rerank over 20 candidates — worth it for the quality gain',
+        ],
+      },
+      { type: 'heading', level: 2, text: '7. Semantic Caching' },
+      {
+        type: 'paragraph',
+        text: 'LLM generation is the most expensive step in the pipeline. If two users ask semantically equivalent questions — "What\'s the refund policy?" vs "How do I get a refund?" — there\'s no reason to run the full pipeline twice.',
+      },
+      {
+        type: 'paragraph',
+        text: 'Semantic caching stores (query_embedding → answer) pairs and, for new queries, checks if there\'s a cached answer whose embedding is close enough to reuse.',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `import numpy as np
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class CacheEntry:
+    query: str
+    embedding: List[float]
+    answer: str
+
+class SemanticCache:
+    def __init__(self, similarity_threshold: float = 0.95):
+        self.entries: List[CacheEntry] = []
+        self.threshold = similarity_threshold
+
+    def cosine_similarity(self, a: List[float], b: List[float]) -> float:
+        a, b = np.array(a), np.array(b)
+        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+
+    def get(self, query_embedding: List[float]) -> Optional[str]:
+        for entry in self.entries:
+            if self.cosine_similarity(query_embedding, entry.embedding) >= self.threshold:
+                return entry.answer
+        return None
+
+    def set(self, query: str, embedding: List[float], answer: str) -> None:
+        self.entries.append(CacheEntry(query, embedding, answer))
+
+
+# In your main pipeline:
+cache = SemanticCache(similarity_threshold=0.95)
+
+def answer_cached(query: str, vector_store) -> str:
+    query_embedding = embed_query_cached(query)
+    cached_answer = cache.get(query_embedding)
+    if cached_answer:
+        return cached_answer  # Skip retrieval + LLM entirely
+    answer = answer_with_rag(query, vector_store)
+    cache.set(query, query_embedding, answer)
+    return answer`,
+      },
+      {
+        type: 'paragraph',
+        text: 'At scale, move this cache to a vector store (Redis with vector search, or a dedicated cache like GPTCache) rather than in-memory. You\'ll also want a TTL strategy — cached answers go stale when the underlying documents change.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Start with a high similarity threshold (0.95+) and lower it only if you\'re comfortable with the semantic fuzziness',
+          'Cache at the answer level, not the retrieval level — avoids running the LLM, which is the expensive part',
+          'Invalidate cache entries when source documents are updated or deleted',
+          'Track cache hit rate — even 20–30% hit rate translates to significant cost and latency savings',
+        ],
+      },
+      {
+        type: 'callout',
+        text: 'Hybrid search + reranking + semantic caching is a high-ROI combination. In production systems I\'ve worked on, this trio reduced P95 latency by ~40% and LLM costs by ~35% compared to naive RAG.',
+      },
+      { type: 'heading', level: 2, text: 'What\'s Next' },
+      {
+        type: 'paragraph',
+        text: 'In Part 3, we cover the operational layer: streaming responses, async retrieval patterns, observability for RAG pipelines, and how to benchmark and evaluate your system so you know if your changes are actually helping.',
+      },
+    ],
+  },
+  {
+    slug: 'scaling-rag-operations',
+    title: 'Scaling RAG Part 3: Operations — Streaming, Observability & Evaluation',
+    date: '2026-03-24',
+    readTime: '9 min read',
+    category: 'Generative AI',
+    tags: ['RAG', 'Observability', 'Streaming', 'Evaluation', 'RAGAS', 'MLOps'],
+    excerpt:
+      'The final piece of a production RAG system: streaming responses for perceived speed, tracing and monitoring for operational visibility, and a rigorous evaluation framework so you know when your system is actually improving.',
+    content: [
+      {
+        type: 'paragraph',
+        text: 'Parts 1 and 2 covered infrastructure and retrieval quality. This post closes out the series with the operational concerns that separate a demo from a production system: async streaming, observability, and evaluation.',
+      },
+      { type: 'heading', level: 2, text: '8. Async & Streaming Responses' },
+      {
+        type: 'paragraph',
+        text: 'LLM generation can take 3–10 seconds for a long response. Waiting for the full response before showing anything to the user feels terrible. Streaming tokens as they\'re generated dramatically improves perceived responsiveness.',
+      },
+      { type: 'heading', level: 3, text: 'Server-Sent Events (SSE) Pattern' },
+      {
+        type: 'paragraph',
+        text: 'The standard pattern is to stream tokens from the LLM over a Server-Sent Events (SSE) connection. The retrieval step happens up front (synchronously), then the generation streams token-by-token.',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `# FastAPI streaming endpoint
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+
+app = FastAPI()
+
+async def rag_stream(query: str, vector_store):
+    # Retrieval is synchronous — do it first
+    context_chunks = retrieve_and_rerank(query, vector_store)
+    context = "\\n\\n---\\n\\n".join(context_chunks)
+
+    prompt = f"""Answer using ONLY the context below.
+
+Context:
+{context}
+
+Question: {query}
+Answer:"""
+
+    # Stream tokens as they arrive
+    stream = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield f"data: {delta}\\n\\n"
+    yield "data: [DONE]\\n\\n"
+
+
+@app.get("/ask")
+async def ask(query: str):
+    return StreamingResponse(
+        rag_stream(query, vector_store),
+        media_type="text/event-stream",
+    )`,
+      },
+      { type: 'heading', level: 3, text: 'Async Retrieval' },
+      {
+        type: 'paragraph',
+        text: 'If you\'re running multiple retrieval strategies in parallel (e.g. dense + sparse + a metadata lookup), run them concurrently rather than sequentially:',
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `import asyncio
+
+async def parallel_retrieve(query: str, vector_store, bm25_index) -> List[str]:
+    dense_task = asyncio.create_task(retrieve_dense_async(query, vector_store))
+    sparse_task = asyncio.create_task(retrieve_sparse_async(query, bm25_index))
+
+    dense_results, sparse_results = await asyncio.gather(dense_task, sparse_task)
+    return reciprocal_rank_fusion(dense_results, sparse_results)`,
+      },
+      { type: 'heading', level: 2, text: '9. Observability' },
+      {
+        type: 'paragraph',
+        text: 'RAG pipelines have multiple failure points that are invisible without instrumentation: bad retrieval, context truncation, LLM hallucination, slow embeddings. You need per-step tracing, not just end-to-end latency.',
+      },
+      { type: 'heading', level: 3, text: 'What to Trace' },
+      {
+        type: 'list',
+        items: [
+          'Retrieval: number of chunks retrieved, similarity scores of top results, whether metadata filters reduced the search space significantly',
+          'Reranking: score distribution before/after rerank, how much the order changed',
+          'Generation: prompt token count, completion token count, latency, finish reason (stop vs. length truncation)',
+          'End-to-end: total latency broken down by stage, cache hit/miss, user feedback (thumbs up/down)',
+        ],
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `import time
+from dataclasses import dataclass, field
+
+@dataclass
+class RAGTrace:
+    query: str
+    cache_hit: bool = False
+    retrieval_ms: float = 0
+    rerank_ms: float = 0
+    generation_ms: float = 0
+    chunks_retrieved: int = 0
+    top_similarity_score: float = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+def answer_with_tracing(query: str, vector_store) -> tuple[str, RAGTrace]:
+    trace = RAGTrace(query=query)
+
+    t0 = time.perf_counter()
+    candidates = hybrid_retrieve(query, vector_store, top_k=20)
+    trace.retrieval_ms = (time.perf_counter() - t0) * 1000
+    trace.chunks_retrieved = len(candidates)
+
+    t1 = time.perf_counter()
+    context_chunks = rerank(query, candidates, top_n=5)
+    trace.rerank_ms = (time.perf_counter() - t1) * 1000
+
+    t2 = time.perf_counter()
+    answer, usage = generate(query, context_chunks)
+    trace.generation_ms = (time.perf_counter() - t2) * 1000
+    trace.prompt_tokens = usage.prompt_tokens
+    trace.completion_tokens = usage.completion_tokens
+
+    # Emit to your observability platform (Datadog, Langfuse, etc.)
+    emit_trace(trace)
+    return answer, trace`,
+      },
+      {
+        type: 'paragraph',
+        text: 'Purpose-built RAG observability tools like Langfuse, Arize Phoenix, and TruLens are worth evaluating — they give you dashboards over retrieval quality and hallucination rates without having to build it yourself.',
+      },
+      { type: 'heading', level: 2, text: '10. Evaluation & Benchmarking' },
+      {
+        type: 'paragraph',
+        text: 'Without a way to measure quality, you\'re flying blind. "It feels better" is not a feedback loop. You need a reproducible eval that tells you objectively whether a change improved the system.',
+      },
+      { type: 'heading', level: 3, text: 'The RAGAS Framework' },
+      {
+        type: 'paragraph',
+        text: 'RAGAS (Retrieval Augmented Generation Assessment) provides four metrics that cover the key quality dimensions:',
+      },
+      {
+        type: 'list',
+        items: [
+          'Faithfulness: does the answer contain only claims supported by the retrieved context? (hallucination detector)',
+          'Answer Relevancy: is the answer actually responsive to the question asked?',
+          'Context Precision: are the retrieved chunks relevant to the question? (retrieval quality)',
+          'Context Recall: did retrieval capture all the information needed to answer? (retrieval completeness)',
+        ],
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `from ragas import evaluate
+from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
+from datasets import Dataset
+
+# Build an evaluation dataset: questions + ground truth answers + your pipeline's outputs
+eval_data = {
+    "question": ["What is the refund window?", "How do I reset my password?"],
+    "answer": [pipeline_answer(q) for q in questions],          # your RAG output
+    "contexts": [pipeline_contexts(q) for q in questions],      # retrieved chunks
+    "ground_truth": ["30 days from purchase.", "Go to settings > security."],
+}
+
+dataset = Dataset.from_dict(eval_data)
+result = evaluate(
+    dataset,
+    metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+)
+print(result)
+# {'faithfulness': 0.91, 'answer_relevancy': 0.87,
+#  'context_precision': 0.83, 'context_recall': 0.79}`,
+      },
+      { type: 'heading', level: 3, text: 'Building a Regression Suite' },
+      {
+        type: 'paragraph',
+        text: 'Run RAGAS scores as part of your CI pipeline. Before merging any change to chunking strategy, retrieval parameters, or prompts, verify that the scores don\'t regress.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Start with 50–100 representative questions covering your main use cases',
+          'Include adversarial questions (things your system should say "I don\'t know" to)',
+          'Track scores over time — a score that slowly drifts down as the corpus grows is a signal worth catching early',
+          'Separate your eval set from your development set — never tune your system on the same questions you evaluate on',
+        ],
+      },
+      {
+        type: 'callout',
+        text: 'Evaluation is the highest-leverage investment in a RAG system. Teams that set up RAGAS early ship improvements faster because they can validate changes in minutes instead of relying on manual spot-checks.',
+      },
+      { type: 'heading', level: 2, text: 'Wrapping Up the Series' },
+      {
+        type: 'paragraph',
+        text: 'Across these three posts, we\'ve gone from a naive notebook RAG prototype to a production-grade system: async ingestion with deduplication, optimized embeddings, a properly architected vector store, hybrid search with RRF fusion, cross-encoder reranking, semantic caching, streaming responses, per-step observability, and a repeatable evaluation framework.',
+      },
+      {
+        type: 'paragraph',
+        text: 'No single change makes the difference. Scaling RAG is a compounding set of improvements, each making the next one more impactful. Pick the one that addresses your current bottleneck, measure the gain, and iterate.',
+      },
+    ],
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
