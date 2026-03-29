@@ -18,6 +18,148 @@ export interface BlogPost {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: 'fine-tuning-vs-rag',
+    title: 'Fine-Tuning vs RAG: Choosing the Right Architecture for Your LLM Application',
+    date: '2026-03-29',
+    readTime: '7 min read',
+    category: 'Generative AI',
+    tags: ['Fine-Tuning', 'RAG', 'LLMs', 'Architecture', 'MLOps'],
+    excerpt:
+      "The two most powerful ways to customize LLM behavior are fine-tuning and RAG — but they solve fundamentally different problems. Here's a practical framework for choosing the right one (and when to use both).",
+    content: [
+      {
+        type: 'paragraph',
+        text: "Every team building an LLM application eventually hits the same fork in the road: the base model doesn't know enough about our domain. Should we fine-tune it? Or build a RAG pipeline? Both can dramatically improve output quality — but they work in entirely different ways and are optimized for different failure modes.",
+      },
+      {
+        type: 'paragraph',
+        text: "Picking the wrong one is expensive. Fine-tuning a model takes time, compute, and labeled data. Building a RAG system takes infra, indexing pipelines, and ongoing maintenance. Getting the architecture wrong early means rebuilding later. Let's make that decision correctly the first time.",
+      },
+      { type: 'heading', level: 2, text: 'What Each Approach Actually Does' },
+      {
+        type: 'paragraph',
+        text: "Fine-tuning modifies the model's weights. You take a pretrained LLM and continue training it on a curated dataset of examples from your domain. The result is a model that has internalized new behavior — it responds differently by default, even with no extra context provided at inference time.",
+      },
+      {
+        type: 'paragraph',
+        text: "RAG leaves the model's weights untouched. Instead, at inference time you retrieve relevant documents from an external knowledge base and inject them into the prompt as context. The model's behavior changes not because it learned something new, but because you're telling it something new every request.",
+      },
+      {
+        type: 'callout',
+        text: 'Fine-tuning = changing what the model knows. RAG = changing what the model is told at runtime. These are orthogonal levers.',
+      },
+      { type: 'heading', level: 2, text: 'When RAG Wins' },
+      {
+        type: 'paragraph',
+        text: "RAG is the right default for most applications. Choose it when:",
+      },
+      {
+        type: 'list',
+        items: [
+          'Your knowledge base changes frequently — product docs, support tickets, news, internal wikis. You can re-index without touching the model.',
+          'You need source attribution. RAG can return the exact chunks it used, so users (and auditors) can verify the answer.',
+          "Your corpus is large. Trying to fine-tune a model on 10M support tickets is impractical; a vector store handles it natively.",
+          "You're working with sensitive or proprietary data that can't leave your infrastructure to be used in a training run.",
+          "You need to update the knowledge base in real time — RAG pipelines can ingest new documents in seconds.",
+        ],
+      },
+      {
+        type: 'paragraph',
+        text: "RAG also fails gracefully. When it can't find relevant context, a well-prompted model will say so. Fine-tuned models are more prone to confident hallucination on out-of-distribution inputs because the training process taught them to always produce an answer.",
+      },
+      { type: 'heading', level: 2, text: 'When Fine-Tuning Wins' },
+      {
+        type: 'paragraph',
+        text: "Fine-tuning shines when the problem is about *style, format, or task behavior* rather than *knowledge*. It's the right choice when:",
+      },
+      {
+        type: 'list',
+        items: [
+          'You need consistent output format. If your app requires JSON with a specific schema on every response, fine-tuning to enforce this is far more reliable than prompting.',
+          "You're doing classification, extraction, or structured generation at scale — fine-tuned models are faster and cheaper at inference than large general-purpose models with long system prompts.",
+          'The task requires domain-specific reasoning patterns. Medical coding, legal clause extraction, or semiconductor design rules are hard to express in prompts but learnable from examples.',
+          "You want to reduce prompt length. Moving instructions from the context window into model weights means shorter prompts, lower latency, and lower cost per call.",
+          "Your base model's default personality or safety configuration is misaligned with your use case (e.g., you need a terse, technical responder, not a verbose helpful assistant).",
+        ],
+      },
+      {
+        type: 'callout',
+        text: "A common mistake: trying to fine-tune in factual knowledge. If you train a model that \"Paris is the capital of Germany\", it may learn that — but it may also degrade on adjacent facts. Knowledge belongs in a retrieval system, not in weights.",
+      },
+      { type: 'heading', level: 2, text: 'The Hybrid Architecture' },
+      {
+        type: 'paragraph',
+        text: "The best production systems often combine both. A fine-tuned model handles format, tone, and reasoning style — while RAG supplies the factual grounding. Think of it as: fine-tuning makes the model a domain expert in *how* to think; RAG gives it fresh *facts* to think about.",
+      },
+      {
+        type: 'code',
+        language: 'python',
+        code: `# Hybrid approach: fine-tuned model + RAG retrieval
+from openai import OpenAI
+
+client = OpenAI()
+
+def answer(query: str, vector_store) -> str:
+    # RAG: retrieve fresh, factual context
+    chunks = vector_store.similarity_search(query, k=5)
+    context = "\\n\\n".join(c.page_content for c in chunks)
+
+    # Fine-tuned model: applies learned domain reasoning style
+    response = client.chat.completions.create(
+        model="ft:gpt-4o-mini:your-org:domain-expert:abc123",  # fine-tuned
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a precise technical assistant. Use only the provided context.",
+            },
+            {
+                "role": "user",
+                "content": f"Context:\\n{context}\\n\\nQuestion: {query}",
+            },
+        ],
+    )
+    return response.choices[0].message.content`,
+      },
+      { type: 'heading', level: 2, text: 'A Practical Decision Framework' },
+      {
+        type: 'paragraph',
+        text: "Here's the mental model I use when advising teams:",
+      },
+      {
+        type: 'list',
+        items: [
+          'Start with RAG. It\'s faster to build, easier to debug, and handles 80% of "the model doesn\'t know our stuff" problems.',
+          'Add fine-tuning only when you have a clear behavioral gap that prompting can\'t close — inconsistent format, wrong tone, poor task reasoning.',
+          'Never fine-tune to memorize facts. Use RAG for knowledge, fine-tuning for skill.',
+          'Measure before you commit. Run evals on your current pipeline first — fine-tuning has a high setup cost and you want to be sure it\'s the actual bottleneck.',
+          'Budget for ongoing fine-tuning. A fine-tuned model trained today will drift as your domain evolves. Plan for periodic retraining or continuous fine-tuning.',
+        ],
+      },
+      { type: 'heading', level: 2, text: 'The Cost Reality' },
+      {
+        type: 'paragraph',
+        text: "Fine-tuning is not a one-time cost. Beyond the initial training run, you pay for: curating and labeling training data (often the hardest part), compute for training and validation, hosting a custom model endpoint (significantly more expensive than a shared API), and retraining cycles as your domain or requirements evolve.",
+      },
+      {
+        type: 'paragraph',
+        text: "RAG's costs are more predictable: storage for your vector index, embedding API calls during ingestion, and slightly longer prompts at inference. For most teams, RAG is cheaper to operate until you hit very high inference volume — at which point the shorter prompts from a fine-tuned model start to pay off.",
+      },
+      {
+        type: 'callout',
+        text: 'Rule of thumb: if you\'re doing fewer than ~1M requests/day, RAG\'s infrastructure costs are almost certainly lower than maintaining a fine-tuned model endpoint. Optimize for iteration speed first.',
+      },
+      { type: 'heading', level: 2, text: 'Closing Thoughts' },
+      {
+        type: 'paragraph',
+        text: "The RAG vs fine-tuning debate is a false dichotomy. They're tools that solve different problems and compose well together. Start with the simplest thing that could work — usually RAG — instrument it, find the actual failure mode, and then decide whether fine-tuning is the right fix.",
+      },
+      {
+        type: 'paragraph',
+        text: "The teams I've seen get into trouble are the ones that reach for fine-tuning too early because it feels more 'real' or impressive. A RAG system with great chunking, hybrid retrieval, and a solid eval framework will outperform a carelessly fine-tuned model every time.",
+      },
+    ],
+  },
+  {
     slug: 'rag-under-the-hood',
     title: 'From Embeddings to Answers: How RAG Works Under the Hood',
     date: '2026-03-20',
