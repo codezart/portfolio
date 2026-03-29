@@ -75,8 +75,8 @@ const Privacy = () => {
             <h2 className="text-xl font-semibold text-foreground mb-3">Contact</h2>
             <p>
               If you have any questions about this privacy policy, you can reach us at{" "}
-              <a href="mailto:codezart@gmail.com" className="text-foreground underline underline-offset-4">
-                codezart@gmail.com
+              <a href="mailto:codezart.git@gmail.com" className="text-foreground underline underline-offset-4">
+                codezart.git@gmail.com
               </a>.
             </p>
           </section>
