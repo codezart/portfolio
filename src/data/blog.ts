@@ -927,6 +927,234 @@ print(result)
       },
     ],
   },
+  {
+    slug: 'building-your-first-ai-agent',
+    title: 'Building Your First AI Agent',
+    date: '2026-03-29',
+    readTime: '8 min read',
+    category: 'AI Agents',
+    tags: ['AI Agents', 'Claude', 'Anthropic', 'LLMs', 'TypeScript'],
+    excerpt:
+      'AI agents are LLMs that can take actions — calling tools, making decisions, and looping until a goal is complete. Here\'s how to build one from scratch using the Anthropic SDK.',
+    content: [
+      {
+        type: 'paragraph',
+        text: "Everyone is talking about AI agents, but most explanations skip straight to the magic without explaining the mechanics. An agent is not a special kind of model — it's a pattern. A loop where an LLM decides what to do, does it, observes the result, and decides what to do next. That's it.",
+      },
+      {
+        type: 'paragraph',
+        text: "In this post we'll build a real agent from scratch using the Anthropic SDK and TypeScript. No frameworks, no abstractions — just the raw loop so you can see exactly how it works. By the end you'll have an agent that can read files, run searches, and reason its way to an answer.",
+      },
+      { type: 'heading', level: 2, text: 'What Makes Something an Agent?' },
+      {
+        type: 'paragraph',
+        text: "A plain LLM call is stateless and single-turn: you send a prompt, you get a response. An agent is different in two ways. First, it has tools — functions it can call to interact with the world. Second, it runs in a loop — the model's output feeds back as input until it decides it's done.",
+      },
+      {
+        type: 'callout',
+        text: 'Agent = LLM + tools + a loop. The model decides which tool to call, you execute it, and you feed the result back. Repeat until done.',
+      },
+      {
+        type: 'paragraph',
+        text: "The key insight is that the LLM is the decision-maker — it reasons about what to do next based on everything it has seen so far. Your code is just the executor — it runs whatever the model asks for and hands the result back.",
+      },
+      { type: 'heading', level: 2, text: 'Setting Up' },
+      {
+        type: 'paragraph',
+        text: "Install the Anthropic SDK and set your API key. We'll write this in TypeScript.",
+      },
+      {
+        type: 'code',
+        language: 'bash',
+        code: 'npm install @anthropic-ai/sdk\nexport ANTHROPIC_API_KEY=your_key_here',
+      },
+      { type: 'heading', level: 2, text: 'Defining Tools' },
+      {
+        type: 'paragraph',
+        text: "Tools are functions your agent can call. You describe them in JSON schema — the model reads the description and decides when to use them. Let's define two simple tools: one to read a file and one to list directory contents.",
+      },
+      {
+        type: 'code',
+        language: 'typescript',
+        code: `import Anthropic from '@anthropic-ai/sdk';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const client = new Anthropic();
+
+const tools: Anthropic.Tool[] = [
+  {
+    name: 'read_file',
+    description: 'Read the contents of a file at the given path.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        file_path: {
+          type: 'string',
+          description: 'The path to the file to read.',
+        },
+      },
+      required: ['file_path'],
+    },
+  },
+  {
+    name: 'list_directory',
+    description: 'List the files and folders in a directory.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        dir_path: {
+          type: 'string',
+          description: 'The path to the directory.',
+        },
+      },
+      required: ['dir_path'],
+    },
+  },
+];`,
+      },
+      { type: 'heading', level: 2, text: 'Executing Tool Calls' },
+      {
+        type: 'paragraph',
+        text: "When the model decides to use a tool, it returns a response with stop_reason: 'tool_use'. Your job is to find the tool call, run the actual function, and return the result. Here's a simple dispatcher:",
+      },
+      {
+        type: 'code',
+        language: 'typescript',
+        code: `function executeTool(name: string, input: Record<string, string>): string {
+  if (name === 'read_file') {
+    try {
+      return fs.readFileSync(input.file_path, 'utf-8');
+    } catch (e) {
+      return \`Error reading file: \${e}\`;
+    }
+  }
+
+  if (name === 'list_directory') {
+    try {
+      const entries = fs.readdirSync(input.dir_path);
+      return entries.join('\\n');
+    } catch (e) {
+      return \`Error listing directory: \${e}\`;
+    }
+  }
+
+  return \`Unknown tool: \${name}\`;
+}`,
+      },
+      { type: 'heading', level: 2, text: 'The Agent Loop' },
+      {
+        type: 'paragraph',
+        text: "This is the core of the agent. We keep calling the model, and if it wants to use a tool we execute it and add the result to the message history. We stop when the model returns stop_reason: 'end_turn' — meaning it has finished reasoning and has a final answer.",
+      },
+      {
+        type: 'code',
+        language: 'typescript',
+        code: `async function runAgent(userMessage: string): Promise<string> {
+  const messages: Anthropic.MessageParam[] = [
+    { role: 'user', content: userMessage },
+  ];
+
+  while (true) {
+    const response = await client.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 4096,
+      tools,
+      messages,
+    });
+
+    // Add the assistant's response to history
+    messages.push({ role: 'assistant', content: response.content });
+
+    // Done — return the final text response
+    if (response.stop_reason === 'end_turn') {
+      const textBlock = response.content.find((b) => b.type === 'text');
+      return textBlock ? textBlock.text : '';
+    }
+
+    // The model wants to use tools — execute each one and collect results
+    if (response.stop_reason === 'tool_use') {
+      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+      for (const block of response.content) {
+        if (block.type === 'tool_use') {
+          const result = executeTool(block.name, block.input as Record<string, string>);
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: result,
+          });
+        }
+      }
+
+      // Feed the results back to the model
+      messages.push({ role: 'user', content: toolResults });
+    }
+  }
+}`,
+      },
+      { type: 'heading', level: 2, text: 'Running It' },
+      {
+        type: 'paragraph',
+        text: "Now let's give the agent a task that requires it to explore the filesystem and reason about what it finds:",
+      },
+      {
+        type: 'code',
+        language: 'typescript',
+        code: `const answer = await runAgent(
+  'Look at the src directory and tell me what this project does based on the file structure.'
+);
+
+console.log(answer);`,
+      },
+      {
+        type: 'paragraph',
+        text: "The agent will call list_directory to see the files, possibly call read_file on a few key ones, and then synthesize an answer. You didn't tell it which files to read — it figured that out itself.",
+      },
+      { type: 'heading', level: 2, text: 'What to Add Next' },
+      {
+        type: 'paragraph',
+        text: "This loop is the foundation. From here, every capability is just a new tool or a smarter system prompt. A few directions worth exploring:",
+      },
+      {
+        type: 'list',
+        items: [
+          'Web search tool — let the agent fetch URLs or query a search API to get live information',
+          'Memory — persist a summary of past runs so the agent can build on previous work',
+          'Sub-agents — have one agent spawn another for specialized subtasks, then collect and merge results',
+          'Structured output — use tool calls with strict schemas to force the agent to return machine-readable data instead of prose',
+          'Streaming — stream the response token by token so users see progress while the agent thinks',
+        ],
+      },
+      { type: 'heading', level: 2, text: 'Where Agents Break Down' },
+      {
+        type: 'paragraph',
+        text: "Agents are powerful but they fail in predictable ways. The most common problems:",
+      },
+      {
+        type: 'list',
+        items: [
+          'Looping — the model gets stuck calling the same tool repeatedly because it misinterprets the result. Always set a max iteration limit.',
+          'Hallucinated tool calls — the model invents arguments that don\'t match your schema. Validate inputs before executing.',
+          'Context overflow — long tool results eat through your context window fast. Truncate or summarize large outputs before adding them to history.',
+          'Compounding errors — a wrong assumption early in the loop cascades into a confidently wrong final answer. Log every step so you can trace back.',
+        ],
+      },
+      {
+        type: 'callout',
+        text: 'Always add a max_iterations guard to your agent loop. An agent with no exit condition and a bug in its tool can run indefinitely — and rack up API costs doing it.',
+      },
+      { type: 'heading', level: 2, text: 'The Loop Is the Architecture' },
+      {
+        type: 'paragraph',
+        text: "The pattern we built here — messages, tools, loop until done — is the same pattern under every agent framework out there. LangChain, LlamaIndex, CrewAI, the Anthropic Agent SDK: they all implement this loop with different abstractions layered on top.",
+      },
+      {
+        type: 'paragraph',
+        text: "Understanding the raw loop means you can debug any agent, adapt any framework, and know exactly what's happening when something goes wrong. Start here, then reach for abstractions only when the complexity earns them.",
+      },
+    ],
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
